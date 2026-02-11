@@ -204,6 +204,87 @@
             transform: scale(1.05);
             box-shadow: 0 0 20px rgba(255, 200, 0, 0.5);
         }
+
+        /* Share buttons container */
+        .share-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+
+        .share-buttons.visible {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .share-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .share-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .share-btn.twitter {
+            background: #1DA1F2;
+            color: white;
+        }
+
+        .share-btn.twitter:hover {
+            box-shadow: 0 0 20px rgba(29, 161, 242, 0.5);
+        }
+
+        .share-btn.challenge {
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            color: white;
+        }
+
+        .share-btn.challenge:hover {
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+        }
+
+        .share-btn.copy {
+            background: #444;
+            color: white;
+        }
+
+        .share-btn.copy:hover {
+            box-shadow: 0 0 20px rgba(100, 100, 100, 0.5);
+        }
+
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: #333;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+
+        .toast.visible {
+            transform: translateX(-50%) translateY(0);
+        }
     </style>
 </head>
 <body>
@@ -242,6 +323,16 @@
 
     <!-- Clear button -->
     <button class="button" id="clearBtn">Draw Again</button>
+
+    <!-- Share buttons (hidden until you draw) -->
+    <div class="share-buttons" id="shareButtons">
+        <button class="share-btn twitter" id="shareTwitter">𝕏 Share Roast</button>
+        <button class="share-btn challenge" id="shareChallenge">🎯 Challenge a Friend</button>
+        <button class="share-btn copy" id="copyLink">📋 Copy Link</button>
+    </div>
+
+    <!-- Toast notification -->
+    <div class="toast" id="toast">Link copied!</div>
 
     <!-- Level progress -->
     <div class="level-bar">
@@ -493,8 +584,12 @@
             levelText.textContent = `${goodCirclesThisLevel} / ${circlesPerLevel} good circles to next level`;
 
             // Set feedback message
-            feedback.textContent = getFeedback(score);
+            const feedbackText = getFeedback(score);
+            feedback.textContent = feedbackText;
             feedback.style.color = color;
+
+            // Store data for sharing
+            storeShareData(score, feedbackText);
 
             // Check for achievements
             checkAchievements(score);
@@ -885,6 +980,83 @@
         canvas.addEventListener('touchstart', startDrawing);
         canvas.addEventListener('touchmove', draw);
         canvas.addEventListener('touchend', stopDrawing);
+
+        // ---- STEP 10: Share functionality ----
+        
+        const shareButtons = document.getElementById('shareButtons');
+        const shareTwitter = document.getElementById('shareTwitter');
+        const shareChallenge = document.getElementById('shareChallenge');
+        const copyLink = document.getElementById('copyLink');
+        const toast = document.getElementById('toast');
+        
+        let lastScore = 0;
+        let lastFeedback = '';
+        
+        // Function to store the last score and feedback for sharing
+        function storeShareData(score, feedbackText) {
+            lastScore = score;
+            lastFeedback = feedbackText;
+            shareButtons.classList.add('visible');
+        }
+        
+        // Share on Twitter/X
+        shareTwitter.addEventListener('click', () => {
+            // Remove emoji from start of feedback for cleaner tweet
+            const cleanFeedback = lastFeedback.replace(/^[\u{1F300}-\u{1F9FF}]\s*/u, '');
+            const tweetText = `I scored ${lastScore}/10 on Rim Me 🍑\n\n"${cleanFeedback}"\n\nThink you can do better?`;
+            const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent('https://rimme.app')}`;
+            window.open(tweetUrl, '_blank');
+        });
+        
+        // Challenge a friend
+        shareChallenge.addEventListener('click', () => {
+            const challengeText = `I scored ${lastScore}/10 on Rim Me. Beat that! 🍑`;
+            const challengeUrl = `https://rimme.app`;
+            
+            // Try native share first (works great on mobile)
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Rim Me Challenge',
+                    text: challengeText,
+                    url: challengeUrl
+                }).catch(() => {
+                    // If share fails, fall back to copy
+                    copyToClipboard(`${challengeText}\n${challengeUrl}`);
+                });
+            } else {
+                // Desktop fallback - copy to clipboard
+                copyToClipboard(`${challengeText}\n${challengeUrl}`);
+            }
+        });
+        
+        // Copy link
+        copyLink.addEventListener('click', () => {
+            copyToClipboard('https://rimme.app');
+        });
+        
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('Link copied!');
+            }).catch(() => {
+                showToast('Failed to copy');
+            });
+        }
+        
+        function showToast(message) {
+            toast.textContent = message;
+            toast.classList.add('visible');
+            setTimeout(() => {
+                toast.classList.remove('visible');
+            }, 2000);
+        }
+        
+        // Hide share buttons when starting a new drawing
+        canvas.addEventListener('mousedown', () => {
+            shareButtons.classList.remove('visible');
+        });
+        canvas.addEventListener('touchstart', () => {
+            shareButtons.classList.remove('visible');
+        });
 
         // ---- THE END! ----
         // When you load this file in a browser, all this code runs
