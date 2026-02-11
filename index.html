@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rim Me</title>
+    <style>
+        /* ============================================
+           STYLES - This controls how everything looks
+           ============================================ */
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: white;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Stats bar at the top */
+        .stats-bar {
+            display: flex;
+            gap: 30px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #00d4ff;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* The drawing canvas */
+        .canvas-container {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        canvas {
+            background: #0d1b2a;
+            border-radius: 20px;
+            cursor: crosshair;
+            touch-action: none; /* Prevents scrolling while drawing on mobile */
+        }
+
+        /* Score display that appears after drawing */
+        .score-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 4rem;
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            text-shadow: 0 0 30px currentColor;
+            pointer-events: none;
+        }
+
+        .score-display.visible {
+            opacity: 1;
+        }
+
+        /* Feedback message */
+        .feedback {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            min-height: 30px;
+            text-align: center;
+        }
+
+        /* Buttons */
+        .button {
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.1rem;
+            border-radius: 50px;
+            cursor: pointer;
+            color: white;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(0, 212, 255, 0.5);
+        }
+
+        /* Level progress bar */
+        .level-bar {
+            width: 300px;
+            height: 10px;
+            background: #0d1b2a;
+            border-radius: 5px;
+            margin-top: 20px;
+            overflow: hidden;
+        }
+
+        .level-progress {
+            height: 100%;
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            transition: width 0.5s ease;
+        }
+
+        .level-text {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: #888;
+        }
+
+        /* Achievement popup */
+        .achievement {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #7b2cbf, #00d4ff);
+            padding: 20px;
+            border-radius: 15px;
+            transform: translateX(400px);
+            transition: transform 0.5s ease;
+            max-width: 280px;
+        }
+
+        .achievement.visible {
+            transform: translateX(0);
+        }
+
+        .achievement-title {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            opacity: 0.8;
+        }
+
+        .achievement-name {
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        /* Instructions */
+        .instructions {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🍑 Rim Me</h1>
+    
+    <p class="instructions">Draw a circle with your mouse or finger</p>
+    
+    <!-- Stats at the top -->
+    <div class="stats-bar">
+        <div class="stat">
+            <div class="stat-value" id="currentStreak">0</div>
+            <div class="stat-label">Streak</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value" id="bestScore">-</div>
+            <div class="stat-label">Best</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value" id="totalCircles">0</div>
+            <div class="stat-label">Circles</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value" id="currentLevel">1</div>
+            <div class="stat-label">Level</div>
+        </div>
+    </div>
+
+    <!-- Drawing area -->
+    <div class="canvas-container">
+        <canvas id="canvas" width="400" height="400"></canvas>
+        <div class="score-display" id="scoreDisplay">10</div>
+    </div>
+
+    <!-- Feedback text -->
+    <div class="feedback" id="feedback"></div>
+
+    <!-- Clear button -->
+    <button class="button" id="clearBtn">Draw Again</button>
+
+    <!-- Level progress -->
+    <div class="level-bar">
+        <div class="level-progress" id="levelProgress"></div>
+    </div>
+    <div class="level-text" id="levelText">0 / 5 good circles to next level</div>
+
+    <!-- Achievement popup (hidden by default) -->
+    <div class="achievement" id="achievement">
+        <div class="achievement-title">🏆 Achievement Unlocked!</div>
+        <div class="achievement-name" id="achievementName"></div>
+    </div>
+
+    <script>
+        /* ================================================
+           JAVASCRIPT - This is the brain of the app
+           Everything that "happens" is controlled here
+           ================================================ */
+
+        // ---- STEP 1: Get references to HTML elements ----
+        // These lines connect our JavaScript to elements on the page
+        // Think of it like giving nicknames to things we want to control
+        
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');  // This is our "paintbrush"
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const feedback = document.getElementById('feedback');
+        const clearBtn = document.getElementById('clearBtn');
+        const streakEl = document.getElementById('currentStreak');
+        const bestEl = document.getElementById('bestScore');
+        const totalEl = document.getElementById('totalCircles');
+        const levelEl = document.getElementById('currentLevel');
+        const levelProgress = document.getElementById('levelProgress');
+        const levelText = document.getElementById('levelText');
+        const achievement = document.getElementById('achievement');
+        const achievementName = document.getElementById('achievementName');
+
+        // ---- STEP 2: Set up our game state ----
+        // These variables keep track of everything happening in the game
+        
+        let isDrawing = false;          // Is the user currently drawing?
+        let points = [];                // Array to store all the points they draw
+        let streak = 0;                 // How many "good" circles in a row
+        let bestScore = 0;              // Their all-time best score
+        let totalCircles = 0;           // Total circles drawn
+        let level = 1;                  // Current level
+        let goodCirclesThisLevel = 0;   // Progress toward next level
+        const circlesPerLevel = 5;      // How many good circles needed to level up
+
+        // Achievement tracking - which achievements have they unlocked?
+        let achievements = {
+            firstCircle: false,
+            perfectTen: false,
+            streak5: false,
+            streak10: false,
+            level5: false,
+            century: false
+        };
+
+        // ---- STEP 3: Drawing functions ----
+        // These handle what happens when the user draws on the canvas
+
+        // Get the position of mouse/touch relative to the canvas
+        function getPosition(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        }
+
+        // When user starts drawing (mouse down or touch start)
+        function startDrawing(e) {
+            e.preventDefault();
+            isDrawing = true;
+            points = [];  // Clear any previous points
+            ctx.clearRect(0, 0, canvas.width, canvas.height);  // Clear the canvas
+            scoreDisplay.classList.remove('visible');  // Hide any previous score
+            
+            const pos = getPosition(e);
+            points.push(pos);
+            
+            // Set up the drawing style
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+            ctx.strokeStyle = '#00d4ff';  // Cyan color
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';  // Smooth line endings
+        }
+
+        // While user is drawing (mouse move or touch move)
+        function draw(e) {
+            if (!isDrawing) return;  // Only draw if we started drawing
+            e.preventDefault();
+            
+            const pos = getPosition(e);
+            points.push(pos);
+            
+            // Draw a line to the new position
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+        }
+
+        // When user finishes drawing (mouse up or touch end)
+        function stopDrawing(e) {
+            if (!isDrawing) return;
+            e.preventDefault();
+            isDrawing = false;
+            
+            // Need at least some points to analyze
+            if (points.length > 10) {
+                analyzeCircle();
+            } else {
+                feedback.textContent = "Draw a bit more! That was too short.";
+            }
+        }
+
+        // ---- STEP 4: The circle analysis algorithm ----
+        // This is where the math magic happens!
+        
+        function analyzeCircle() {
+            // STEP 4a: Find the center of what they drew
+            // We do this by averaging all the X positions and all the Y positions
+            let sumX = 0, sumY = 0;
+            for (let point of points) {
+                sumX += point.x;
+                sumY += point.y;
+            }
+            const centerX = sumX / points.length;
+            const centerY = sumY / points.length;
+
+            // STEP 4b: Calculate the distance from center to each point
+            // For a perfect circle, all these distances would be identical
+            let distances = [];
+            for (let point of points) {
+                const dx = point.x - centerX;
+                const dy = point.y - centerY;
+                const distance = Math.sqrt(dx * dx + dy * dy);  // Pythagorean theorem!
+                distances.push(distance);
+            }
+
+            // STEP 4c: Find the average radius (average of all distances)
+            let sumDist = 0;
+            for (let d of distances) {
+                sumDist += d;
+            }
+            const avgRadius = sumDist / distances.length;
+
+            // STEP 4d: Calculate how much the distances vary from the average
+            // This is called "standard deviation" - lower = more circular
+            let sumVariance = 0;
+            for (let d of distances) {
+                const diff = d - avgRadius;
+                sumVariance += diff * diff;
+            }
+            const variance = sumVariance / distances.length;
+            const stdDev = Math.sqrt(variance);
+
+            // STEP 4e: Convert to a score out of 10
+            // The coefficient of variation (CV) tells us how "wobbly" the circle is
+            const cv = stdDev / avgRadius;  // Lower = better
+            
+            // Convert CV to a score: perfect circle (cv=0) = 10, terrible (cv>0.3) = 0
+            let score = Math.max(0, 10 - (cv * 33));
+            score = Math.round(score * 10) / 10;  // Round to 1 decimal place
+
+            // STEP 4f: Check if the shape is "closed" (end meets beginning)
+            const startPoint = points[0];
+            const endPoint = points[points.length - 1];
+            const closureDistance = Math.sqrt(
+                Math.pow(endPoint.x - startPoint.x, 2) + 
+                Math.pow(endPoint.y - startPoint.y, 2)
+            );
+            
+            // Penalize if they didn't close the circle
+            if (closureDistance > avgRadius * 0.3) {
+                score = Math.max(0, score - 1);
+            }
+
+            // Display the results
+            displayScore(score, centerX, centerY, avgRadius);
+        }
+
+        // ---- STEP 5: Display score and update game state ----
+        
+        function displayScore(score, centerX, centerY, radius) {
+            // Update totals
+            totalCircles++;
+            totalEl.textContent = totalCircles;
+
+            // Determine color based on score
+            let color;
+            if (score >= 9) color = '#00ff88';      // Green for excellent
+            else if (score >= 7) color = '#00d4ff'; // Cyan for good
+            else if (score >= 5) color = '#ffaa00'; // Orange for okay
+            else color = '#ff4466';                  // Red for needs work
+
+            // Show the score
+            scoreDisplay.textContent = score.toFixed(1);
+            scoreDisplay.style.color = color;
+            scoreDisplay.classList.add('visible');
+
+            // Draw the "perfect" circle for comparison
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);  // Dashed line
+            ctx.stroke();
+            ctx.setLineDash([]);  // Reset to solid
+
+            // Draw center point
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 4, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.fill();
+
+            // Update streak
+            if (score >= 7) {
+                streak++;
+                goodCirclesThisLevel++;
+            } else {
+                streak = 0;
+            }
+            streakEl.textContent = streak;
+
+            // Update best score
+            if (score > bestScore) {
+                bestScore = score;
+                bestEl.textContent = bestScore.toFixed(1);
+            }
+
+            // Check for level up
+            if (goodCirclesThisLevel >= circlesPerLevel) {
+                level++;
+                goodCirclesThisLevel = 0;
+                levelEl.textContent = level;
+                showAchievement(`Level ${level}!`);
+            }
+
+            // Update level progress bar
+            const progressPercent = (goodCirclesThisLevel / circlesPerLevel) * 100;
+            levelProgress.style.width = progressPercent + '%';
+            levelText.textContent = `${goodCirclesThisLevel} / ${circlesPerLevel} good circles to next level`;
+
+            // Set feedback message
+            feedback.textContent = getFeedback(score);
+            feedback.style.color = color;
+
+            // Check for achievements
+            checkAchievements(score);
+        }
+
+        // ---- STEP 6: Feedback messages ----
+        
+        function getFeedback(score) {
+            // Helper function to pick a random insult from an array
+            const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+            
+            // GOD TIER: 9.5 - 10 (Grudging respect)
+            if (score >= 9.5) return pick([
+                "🎯 Fuck. Okay. You win. I hope you get a paper cut celebrating.",
+                "🎯 Jesus Christ, that was actually perfect. Don't get used to it, you'll peak here.",
+                "🎯 Fine. Take your win. I hope it fills the void your father left.",
+                "🎯 Alright, I'll admit it. That was incredible. Now go fuck yourself.",
+                "🎯 Holy shit. Even your parents might love you after that one."
+            ]);
+            
+            // EXCELLENT: 9.0 - 9.4 (Backhanded compliment)
+            if (score >= 9.0) return pick([
+                "🌟 Damn, not bad. Still wouldn't shag you though.",
+                "🌟 Impressive. Your wanking hand finally found a productive use.",
+                "🌟 Well well well. Looks like all that masturbation improved your wrist control.",
+                "🌟 Almost perfect. Like you. Almost loveable. Almost.",
+                "🌟 Shit, that was good. Did your wife's boyfriend help you?"
+            ]);
+            
+            // GREAT: 8.5 - 8.9 (Encouraging with sting)
+            if (score >= 8.5) return pick([
+                "✨ Getting close! Maybe if you edged more you'd have the stamina to finish properly.",
+                "✨ Not bad! Your hand-eye coordination is improving. Shame about your face.",
+                "✨ Ohhh nearly there! Try wanking with your other hand to balance out the muscle development.",
+                "✨ So close to greatness. So close. Story of your life really.",
+                "✨ That's actually decent! Your cum-crusted keyboard would be proud."
+            ]);
+            
+            // GOOD: 8.0 - 8.4 (Encouraging with sting)
+            if (score >= 8.0) return pick([
+                "👍 Getting there! Channel that sexual frustration into rounder circles.",
+                "👍 Not terrible! Maybe lay off the porn for a week and practice instead.",
+                "👍 Progress! Your virginity remains intact but your circles are improving.",
+                "👍 That's alright! Imagine if you put this much effort into your relationships.",
+                "👍 Keep going! You're almost as good as a child. A talented child, but still."
+            ]);
+            
+            // DECENT: 7.5 - 7.9 (Encouraging with sting)
+            if (score >= 7.5) return pick([
+                "😏 Ehhh getting there. Try gripping your mouse like you grip your cock - firmly but with love.",
+                "😏 Average. Just like your dick. But there's room for growth. Unlike your dick.",
+                "😏 Not hopeless! Maybe switch hands - give your dominant one a rest from... other activities.",
+                "😏 Could be worse! Your circle's got potential. More than your Tinder profile anyway.",
+                "😏 Okay okay, I see you trying. Shame nobody else sees you trying. Ever. At anything."
+            ]);
+            
+            // MAX SAVAGERY ZONE: 6.5 - 7.4 (Tried and failed)
+            if (score >= 6.5) return pick([
+                "🔥 Maybe if you masturbated less you'd have the energy to draw this damn circle!",
+                "🔥 Is your arm tired from wanking? Because that circle looks exhausted.",
+                "🔥 You tried. You failed. Like your parents' contraception.",
+                "🔥 That circle's as wonky as your mum's moral compass.",
+                "🔥 Effort detected. Talent not found. Just like when you lose your dick in your own fat rolls."
+            ]);
+            
+            // MAX SAVAGERY ZONE: 5.5 - 6.4 (Tried and failed)
+            if (score >= 5.5) return pick([
+                "💀 Did you draw this with your cock? Because that would actually explain a lot.",
+                "💀 That circle's got more wobbles than your nan's underarms.",
+                "💀 Christ. Were you being fisted while drawing this?",
+                "💀 This looks like what happens when someone tries to draw during a prostate exam.",
+                "💀 I've seen better curves on a fucking roundabout. A bombed roundabout."
+            ]);
+            
+            // MAX SAVAGERY ZONE: 5.0 - 5.4 (Tried and failed)
+            if (score >= 5.0) return pick([
+                "🤮 Mate. MATE. My shit comes out more circular than that.",
+                "🤮 Was your drawing hand busy fingering your arse? Genuinely curious.",
+                "🤮 This looks like a cry for help drawn by someone mid-stroke. The medical kind.",
+                "🤮 Even blind kids at a special school would bully you for this.",
+                "🤮 Your hand movement is shakier than a Parkinson's patient trying to masturbate during an earthquake."
+            ]);
+            
+            // PATHETIC ZONE: 4.0 - 4.9 (Give up)
+            if (score >= 4.0) return pick([
+                "😐 Just stop. Seriously. This is embarrassing for both of us.",
+                "😐 Have you considered that maybe drawing isn't for you? Or breathing?",
+                "😐 That's not a circle. That's a visual representation of your parents' disappointment.",
+                "😐 I've seen better shapes in my toilet after a curry. Much better.",
+                "😐 Genuinely, are you okay? Medically? This is concerning."
+            ]);
+            
+            // PATHETIC ZONE: 3.0 - 3.9 (Give up)
+            if (score >= 3.0) return pick([
+                "🚮 Your mum should have swallowed.",
+                "🚮 This is what happens when cousins fuck. You. You're what happens.",
+                "🚮 I'd say go fuck yourself but you'd probably miss.",
+                "🚮 Were you born this useless or did you take lessons?",
+                "🚮 That circle looks like your mum drew it. With her saggy tits. While drunk."
+            ]);
+            
+            // PATHETIC ZONE: 2.0 - 2.9 (Give up)
+            if (score >= 2.0) return pick([
+                "⚰️ Uninstall your hands. Send them back to God. Demand a fucking refund.",
+                "⚰️ This looks like a suicide note in shape form.",
+                "⚰️ I've seen better motor control from corpses. Literally decomposing corpses.",
+                "⚰️ At this point the circle isn't the problem. Your entire existence is the problem.",
+                "⚰️ Did your brain shit itself while you drew this?"
+            ]);
+            
+            // PATHETIC ZONE: 1.0 - 1.9 (Give up)
+            if (score >= 1.0) return pick([
+                "💩 What the actual fuck is this? Did you have a stroke? Are you stroking out right now?",
+                "💩 This is so bad I'm going to send it to your employer.",
+                "💩 I've seen better coordination from a dead badger being fucked by a truck.",
+                "💩 That's not a circle, that's a visual representation of your future. Shapeless and hopeless.",
+                "💩 Even your wanking arm is embarrassed by this and that thing has SEEN SOME SHIT."
+            ]);
+            
+            // ABSOLUTE ROCK BOTTOM: 0 - 0.9 (Why exist)
+            return pick([
+                "☠️ I'm calling the police. Not because this is a crime. Because someone needs to check on you.",
+                "☠️ This is genuinely the worst thing I've ever seen. And I've watched your parents' sex tape.",
+                "☠️ Delete the app. Delete yourself. Start again as a different species.",
+                "☠️ That's not a circle. That's not even a shape. That's just evidence of brain damage.",
+                "☠️ Somewhere out there, a village is missing its idiot. It's you. You're the idiot. Go home."
+            ]);
+        }
+
+        // ---- STEP 7: Achievement system ----
+        
+        function checkAchievements(score) {
+            if (!achievements.firstCircle) {
+                achievements.firstCircle = true;
+                showAchievement("First Circle!");
+            }
+            
+            if (score === 10 && !achievements.perfectTen) {
+                achievements.perfectTen = true;
+                setTimeout(() => showAchievement("Perfect 10! 🎯"), 1500);
+            }
+            
+            if (streak >= 5 && !achievements.streak5) {
+                achievements.streak5 = true;
+                setTimeout(() => showAchievement("5 Streak! 🔥"), 1500);
+            }
+            
+            if (streak >= 10 && !achievements.streak10) {
+                achievements.streak10 = true;
+                setTimeout(() => showAchievement("10 Streak! 🔥🔥"), 1500);
+            }
+            
+            if (level >= 5 && !achievements.level5) {
+                achievements.level5 = true;
+                setTimeout(() => showAchievement("Level 5 Master! ⭐"), 1500);
+            }
+            
+            if (totalCircles >= 100 && !achievements.century) {
+                achievements.century = true;
+                setTimeout(() => showAchievement("Century Club! 💯"), 1500);
+            }
+        }
+
+        function showAchievement(name) {
+            achievementName.textContent = name;
+            achievement.classList.add('visible');
+            
+            // Hide after 3 seconds
+            setTimeout(() => {
+                achievement.classList.remove('visible');
+            }, 3000);
+        }
+
+        // ---- STEP 8: Clear button ----
+        
+        clearBtn.addEventListener('click', () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            scoreDisplay.classList.remove('visible');
+            feedback.textContent = '';
+            points = [];
+        });
+
+        // ---- STEP 9: Connect all the event listeners ----
+        // These tell the browser "when X happens, run Y function"
+        
+        // Mouse events (for desktop)
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseleave', stopDrawing);
+
+        // Touch events (for mobile/tablet)
+        canvas.addEventListener('touchstart', startDrawing);
+        canvas.addEventListener('touchmove', draw);
+        canvas.addEventListener('touchend', stopDrawing);
+
+        // ---- THE END! ----
+        // When you load this file in a browser, all this code runs
+        // and the app becomes interactive
+        
+    </script>
+</body>
+</html>
