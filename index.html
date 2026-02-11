@@ -185,6 +185,25 @@
             font-size: 0.9rem;
             margin-bottom: 15px;
         }
+
+        /* Coffee button */
+        .coffee-btn {
+            display: inline-block;
+            margin-top: 30px;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #ff9d00, #ffcc00);
+            color: #1a1a2e;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 0.95rem;
+            border-radius: 50px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .coffee-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(255, 200, 0, 0.5);
+        }
     </style>
 </head>
 <body>
@@ -229,6 +248,9 @@
         <div class="level-progress" id="levelProgress"></div>
     </div>
     <div class="level-text" id="levelText">0 / 5 good circles to next level</div>
+
+    <!-- Buy me a coffee button -->
+    <a href="https://buymeacoffee.com/rimme" target="_blank" class="coffee-btn">☕ Buy me a coffee homie</a>
 
     <!-- Achievement popup (hidden by default) -->
     <div class="achievement" id="achievement">
